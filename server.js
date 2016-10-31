@@ -1,5 +1,7 @@
-// $HOME/redis/src/redis-server
-// $HOME/mongodb/bin/mongod --dbpath=$HOME/mongodb/data
+jshint browser: true, jquery: true, camelcase: true, indent: 2, undef: true, quotmark: single, maxlen: 80, trailing: true, curly: true, eqeqeq: true, forin: true, immed: true, latedef: true, newcap: true, nonew: true, unused: true, strict: true;
+
+// Jimmy Vo
+// CPSC 473 - Assignment 4
 
 // Packages we need
 var express = require('express'),
@@ -9,8 +11,8 @@ var express = require('express'),
 
 var	mongoose = require('mongoose'); // import the mongoose library
 mongoose.Promise = global.Promise;
-//var redis = require('redis');
-//	redisClient = redis.createClient();
+var redis = require('redis');
+redisClient = redis.createClient();
 
 app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json()); // support json encoded bodies
@@ -37,24 +39,24 @@ var QuestionsSchema = mongoose.Schema(
 
 var UseQuesSchema = mongoose.model("Question", QuestionsSchema);
 
-var availableId = 0;
-//Return the number of questions in the DB
-dbQuestionCount = function()
+var availableId = 0, //store question id #, default at 0, 
+	chosenQuestion = '',	//store chosen(random) question/id
+	chosenId = 0;
+
+//set default scores for right/wrong to 0
+var outcomeScore = function()
 {
-	UseQuesSchema.count({},function(err, count)
-	{
-		availableId = count;
-		return availableId;
-	})
-}
+	redisClient.set('right', '0');
+	redisClient.set('wrong', '0');
+};
 
-
-// direct to page
+// direct to page to enter new question/answer
 app.get('/',function(req,res)
 {
   res.sendfile('index');
 });
 
+// post new question/answer to DB with current ID index
 app.post('/question', function(req, res)
 {
 	var addQuestion = req.body.newQuestion;
@@ -63,7 +65,7 @@ app.post('/question', function(req, res)
 		{
 			"question" : addQuestion, 
 			"answer" : addAnswer, 
-			"answerId" : availableId	//assign availableId to aanswerId in DB for question
+			"answerId" : availableId	//assign availableId to answerId in DB for question
 		}
 	);
 	
@@ -80,76 +82,55 @@ app.post('/question', function(req, res)
 			console.log("the object was saved!");
 		}
 	});
+	availableId = availableId + 1;	//increment for next question to save to available index
 });
 
-
-
-
-/*
-//Create new question to store into DB
-createQuestion = function(question, answer)
+// get/ask question from DB 
+app.get('/question', function (req, res) 
 {
-	var newQuestion = new UseQuesSchema(
+		// count how many question in DB and get random question out
+		UseQuesSchema.count().exec(function(err, count)
 		{
-			"question" : question, 
-			"answer" : answer, 
-			"answerId" : availableId	//assign availableId to aanswerId in DB for question
-		}
-	);
-	
-	// save this card to our data store
-	newQuestion.save(function (err) 
-	{
-		if (err !== null) 
-		{
-			// object was not saved!
-			console.log(err);
-		} 
-		else 
-		{
-			console.log("the object was saved!");
-		}
-	});
-
-	availableId += 1;	//to make next index/# available for new question later
-}
-*/
-//queryQuestion = function
-
-/*
-var qnOne = new Question({"question":"Who was the first computer programmer?", "answerId":"1"})
-
-
-//save question into our data store
-qnOne.save(function (err) {
-	if (err !== null) {
-		// object was not saved!
-		console.log(err);
-	} else {
-		console.log("the object was saved!");
-	}
-});
-
-
-app.get('/question', function (req, res) {
-	Question.find({}, function (err, questions) {
-		if (err !== null) {
-			console.log("ERROR: " + err);
-			// return from the function
-			return;
-		}
-
-		// if we get here, there was no error
-		questions.forEach(function (question) {
-			// this will print all of the cards in the database
-			console.log (question.question);
-			res.json(questions);
+			var random = Math.floor(Math.random() * count);
+			UseQuesSchema.findOne().skip(random).exec(function(err, result)
+			{
+				chosenQuestion = result.question;	// store random question/Id to know which question was asked
+				chosenId = result.answerId;
+				/*var html = '<form action="/answer" method="post">' +
+               	'Question:' + result.question +
+               	'<p></p>' + 'Answer: ' + '<input type="text" name="qAnswer"><p></p>' +
+               	'<button type="submit">Submit</button>' +
+            	'</form>';
+  				res.send(html);*/
+			});
 		});
-		res.json(questions);
+});
+
+//check if answer is corrent and increment our redis count
+app.post('/answer', function(req, res)
+{
+	var checkAnswer = req.body.qAnswer;
+	UseQuesSchema.find({answerId:chosenId}, function (err, check)
+	{
+		if (checkAnswer	!= check.answer)
+		{
+			redisClient.incr('wrong')
+			/*var html = '<form>' + 'Answer: incorrect' + '</form>';
+  			res.send(html);*/
+		}
+		else
+		{
+			redisClient.incr('right')
+			/*var html = '<form>' + 'Answer: correct' + '</form>';
+  			res.send(html);*/
+		}
 	});
 });
-*/
 
+app.get('/score', function (req, res)
+{
+	redisClient.mget(['right', 'wrong']);
+});
 
 
 
