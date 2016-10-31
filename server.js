@@ -8,6 +8,7 @@ var express = require('express'),
 	app = express();
 
 var	mongoose = require('mongoose'); // import the mongoose library
+mongoose.Promise = global.Promise;
 //var redis = require('redis');
 //	redisClient = redis.createClient();
 
