@@ -1,4 +1,4 @@
-jshint browser: true, jquery: true, camelcase: true, indent: 2, undef: true, quotmark: single, maxlen: 80, trailing: true, curly: true, eqeqeq: true, forin: true, immed: true, latedef: true, newcap: true, nonew: true, unused: true, strict: true;
+/*jshint browser: true, jquery: true, camelcase: true, indent: 2, undef: true, quotmark: single, maxlen: 80, trailing: true, curly: true, eqeqeq: true, forin: true, immed: true, latedef: true, newcap: true, nonew: true, unused: true, strict: true*/
 
 // Jimmy Vo
 // CPSC 473 - Assignment 4
@@ -96,12 +96,12 @@ app.get('/question', function (req, res)
 			{
 				chosenQuestion = result.question;	// store random question/Id to know which question was asked
 				chosenId = result.answerId;
-				/*var html = '<form action="/answer" method="post">' +
+				var html = '<form action="/answer" method="post">' +
                	'Question:' + result.question +
                	'<p></p>' + 'Answer: ' + '<input type="text" name="qAnswer"><p></p>' +
                	'<button type="submit">Submit</button>' +
             	'</form>';
-  				res.send(html);*/
+  				res.send(html);
 			});
 		});
 });
@@ -115,14 +115,14 @@ app.post('/answer', function(req, res)
 		if (checkAnswer	!= check.answer)
 		{
 			redisClient.incr('wrong')
-			/*var html = '<form>' + 'Answer: incorrect' + '</form>';
-  			res.send(html);*/
+			var html = '<form>' + 'Answer: incorrect' + '</form>';
+  			res.send(html);
 		}
 		else
 		{
 			redisClient.incr('right')
-			/*var html = '<form>' + 'Answer: correct' + '</form>';
-  			res.send(html);*/
+			var html = '<form>' + 'Answer: correct' + '</form>';
+  			res.send(html);
 		}
 	});
 });
