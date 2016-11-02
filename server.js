@@ -39,10 +39,12 @@ var QuestionsSchema = mongoose.Schema(
 
 var UseQuesSchema = mongoose.model("Question", QuestionsSchema);
 
-var availableId = 0, //store question id #, default at 0, 
-	chosenQuestion = '',	//store chosen(random) question/id
-	chosenId = 0;
-
+var availableId, //store question id #
+	chosenQuestion,	//store chosen(random) question/id
+	chosenId;
+var scoreCounts = {}; // objects to work with for storing redis score count
+scoreCounts.right = 0;
+scoreCounts.wrong = 0;
 //set default scores for right/wrong to 0
 var outcomeScore = function()
 {
@@ -50,7 +52,20 @@ var outcomeScore = function()
 	redisClient.set('wrong', '0');
 };
 
+// get the number of items in DB every time you run program
+// useful for adding questions and getting the right ID
+var idCount = function()
+{
+	UseQuesSchema.count({},function(err, dbQCount)
+	{
+		availableId = dbQCount;
+		return availableId;
+	});
+	
+};
+
 // direct to page to enter new question/answer
+// front end to test
 app.get('/',function(req,res)
 {
   res.sendfile('index');
@@ -61,7 +76,8 @@ app.post('/question', function(req, res)
 {
 	var addQuestion = req.body.newQuestion;
 	var addAnswer = req.body.newAnswer
-	var newQuestion = new UseQuesSchema(
+	var newQuestion = new UseQuesSchema
+	(
 		{
 			"question" : addQuestion, 
 			"answer" : addAnswer, 
@@ -85,10 +101,10 @@ app.post('/question', function(req, res)
 	availableId = availableId + 1;	//increment for next question to save to available index
 });
 
-// get/ask question from DB 
+// ask question from DB 
 app.get('/question', function (req, res) 
 {
-		// count how many question in DB and get random question out
+		// count how many question in DB and pass to get random question out
 		UseQuesSchema.count().exec(function(err, count)
 		{
 			var random = Math.floor(Math.random() * count);
@@ -99,7 +115,7 @@ app.get('/question', function (req, res)
 				var html = '<form action="/answer" method="post">' +
                	'Question:' + result.question +
                	'<p></p>' + 'Answer: ' + '<input type="text" name="qAnswer"><p></p>' +
-               	'<button type="submit">Submit</button>' +
+               	'<button type="submit">Submit</button>' + '<p></p>answerId: ' + result.answerId + 
             	'</form>';
   				res.send(html);
 			});
@@ -129,7 +145,11 @@ app.post('/answer', function(req, res)
 
 app.get('/score', function (req, res)
 {
-	redisClient.mget(['right', 'wrong']);
+	redisClient.mget(['right', 'wrong'], function(err, results)
+	{
+		res.json('Right answers: ' + scoreCounts.right = parseInt(results[0], 10) || 0);
+		res.json('Wrong answers: ' + scoreCounts.wrong = parseInt(results[1], 10) || 0);
+	});
 });
 
 
